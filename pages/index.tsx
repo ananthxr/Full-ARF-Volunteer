@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Layout from '@/components/Layout';
-import { subscribeToTeams, updatePhysicalScore, type Team } from '@/lib/firestore';
+import { subscribeToTeams, updatePhysicalScore, resetAllTeams, publishVolunteerStart, publishVolunteerEnd, getHuntStatus, subscribeToHuntStatus, type Team } from '@/lib/firestore';
 
 export default function VolunteerDashboard() {
   const [teams, setTeams] = useState<Team[]>([]);
@@ -15,6 +15,10 @@ export default function VolunteerDashboard() {
   const [editingPhysicalScore, setEditingPhysicalScore] = useState<{[key: string]: string}>({});
   const [editingComment, setEditingComment] = useState<{[key: string]: string}>({});
   const [savingScore, setSavingScore] = useState<{[key: string]: boolean}>({});
+  const [isResetting, setIsResetting] = useState(false);
+  const [isStartingHunt, setIsStartingHunt] = useState(false);
+  const [huntStatus, setHuntStatus] = useState<boolean>(false);
+  const [huntStatusLoading, setHuntStatusLoading] = useState(true);
 
   useEffect(() => {
     let retryCount = 0;
@@ -55,6 +59,32 @@ export default function VolunteerDashboard() {
     return () => {
       if (unsubscribe) {
         unsubscribe();
+      }
+    };
+  }, []);
+
+  // Hunt status listener
+  useEffect(() => {
+    console.log('Setting up hunt status listener...');
+    
+    const unsubscribeHuntStatus = subscribeToHuntStatus((status) => {
+      console.log('Hunt status received:', status);
+      setHuntStatus(status);
+      setHuntStatusLoading(false);
+    });
+
+    // Initial load of hunt status
+    getHuntStatus().then((status) => {
+      setHuntStatus(status);
+      setHuntStatusLoading(false);
+    }).catch((error) => {
+      console.error('Error getting initial hunt status:', error);
+      setHuntStatusLoading(false);
+    });
+
+    return () => {
+      if (unsubscribeHuntStatus) {
+        unsubscribeHuntStatus();
       }
     };
   }, []);
@@ -200,6 +230,67 @@ export default function VolunteerDashboard() {
       minute: '2-digit',
       second: '2-digit'
     });
+  };
+
+  const handleResetAll = async () => {
+    const password = prompt('⚠️ DANGER: This will reset ALL team progress and scores to ZERO!\n\nEnter password to confirm:');
+    
+    if (password !== 'ananthJEE2@') {
+      if (password !== null) {
+        alert('❌ Incorrect password. Reset cancelled.');
+      }
+      return;
+    }
+
+    const finalConfirm = confirm('🚨 FINAL CONFIRMATION: Are you absolutely sure you want to reset ALL teams?\n\nThis action cannot be undone!');
+    
+    if (!finalConfirm) {
+      return;
+    }
+
+    setIsResetting(true);
+    
+    try {
+      await resetAllTeams();
+      alert('✅ All teams have been reset successfully!');
+    } catch (error) {
+      console.error('Error resetting teams:', error);
+      alert('❌ Error resetting teams. Please try again.');
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  const handleToggleHunt = async () => {
+    const action = huntStatus ? 'end' : 'start';
+    const actionText = huntStatus ? 'End' : 'Start';
+    const emoji = huntStatus ? '🛑' : '🎯';
+    
+    const password = prompt(`${emoji} ${actionText} the treasure hunt!\n\nEnter password to confirm:`);
+    
+    if (password !== 'ananthJEE2@') {
+      if (password !== null) {
+        alert(`❌ Incorrect password. ${actionText} cancelled.`);
+      }
+      return;
+    }
+
+    setIsStartingHunt(true);
+    
+    try {
+      if (huntStatus) {
+        await publishVolunteerEnd();
+        alert('🛑 Treasure hunt ended successfully! Signal sent to all teams.');
+      } else {
+        await publishVolunteerStart();
+        alert('🚀 Treasure hunt started successfully! Signal sent to all teams.');
+      }
+    } catch (error) {
+      console.error(`Error ${action}ing hunt:`, error);
+      alert(`❌ Error ${action}ing hunt. Please try again.`);
+    } finally {
+      setIsStartingHunt(false);
+    }
   };
 
   return (
@@ -480,6 +571,158 @@ export default function VolunteerDashboard() {
           background: #5a67d8;
         }
 
+        .admin-controls {
+          background: linear-gradient(135deg, rgba(139,69,19,0.9) 0%, rgba(160,82,45,0.9) 100%);
+          color: white;
+          padding: 1.5rem;
+          border-radius: 15px;
+          margin-bottom: 2rem;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .admin-buttons {
+          display: flex;
+          gap: 1rem;
+          justify-content: center;
+          flex-wrap: wrap;
+          margin-top: 1rem;
+        }
+
+        .btn-danger {
+          background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+          color: white;
+          padding: 0.75rem 1.5rem;
+          border: none;
+          border-radius: 8px;
+          font-size: 1rem;
+          font-weight: bold;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+          transition: all 0.3s ease;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+          background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+        }
+
+        .btn-danger:disabled {
+          background: #95a5a6;
+          cursor: not-allowed;
+          transform: none;
+          box-shadow: none;
+        }
+
+        .btn-start {
+          background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
+          color: white;
+          padding: 0.75rem 1.5rem;
+          border: none;
+          border-radius: 8px;
+          font-size: 1rem;
+          font-weight: bold;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          box-shadow: 0 4px 15px rgba(0, 184, 148, 0.3);
+          transition: all 0.3s ease;
+        }
+
+        .btn-start:hover:not(:disabled) {
+          background: linear-gradient(135deg, #00a085 0%, #008f72 100%);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(0, 184, 148, 0.4);
+        }
+
+        .btn-start:disabled {
+          background: #95a5a6;
+          cursor: not-allowed;
+          transform: none;
+          box-shadow: none;
+        }
+
+        .btn-end {
+          background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+          color: white;
+          padding: 0.75rem 1.5rem;
+          border: none;
+          border-radius: 8px;
+          font-size: 1rem;
+          font-weight: bold;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+          transition: all 0.3s ease;
+        }
+
+        .btn-end:hover:not(:disabled) {
+          background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+        }
+
+        .btn-end:disabled {
+          background: #95a5a6;
+          cursor: not-allowed;
+          transform: none;
+          box-shadow: none;
+        }
+
+        .hunt-status-indicator {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          margin-bottom: 1rem;
+          justify-content: center;
+        }
+
+        .status-light {
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          box-shadow: 0 0 10px rgba(0,0,0,0.3);
+          animation: pulse 2s infinite;
+        }
+
+        .status-light.active {
+          background: #00b894;
+          box-shadow: 0 0 20px rgba(0, 184, 148, 0.6);
+        }
+
+        .status-light.inactive {
+          background: #e74c3c;
+          box-shadow: 0 0 20px rgba(231, 76, 60, 0.6);
+        }
+
+        .status-light.loading {
+          background: #fdcb6e;
+          box-shadow: 0 0 20px rgba(253, 203, 110, 0.6);
+        }
+
+        .status-text {
+          font-size: 1.1rem;
+          font-weight: bold;
+        }
+
+        .status-text.active {
+          color: #00b894;
+        }
+
+        .status-text.inactive {
+          color: #e74c3c;
+        }
+
+        .status-text.loading {
+          color: #fdcb6e;
+        }
+
         .loading-container {
           text-align: center;
           padding: 3rem;
@@ -670,6 +913,55 @@ export default function VolunteerDashboard() {
                 Last updated: <strong>{formatLastUpdated(lastUpdated)}</strong>
               </p>
             )}
+          </div>
+
+          {/* Admin Controls */}
+          <div className="admin-controls">
+            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem', fontWeight: 'bold', textAlign: 'center' }}>
+              🔐 Admin Controls
+            </h3>
+            <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', opacity: 0.9, textAlign: 'center' }}>
+              Password-protected actions for hunt management
+            </p>
+            
+            {/* Hunt Status Indicator */}
+            <div className="hunt-status-indicator">
+              <div 
+                className={`status-light ${
+                  huntStatusLoading ? 'loading' : huntStatus ? 'active' : 'inactive'
+                }`}
+              ></div>
+              <div 
+                className={`status-text ${
+                  huntStatusLoading ? 'loading' : huntStatus ? 'active' : 'inactive'
+                }`}
+              >
+                {huntStatusLoading ? 'Loading hunt status...' : 
+                 huntStatus ? '🟢 HUNT IS ACTIVE' : '🔴 HUNT IS INACTIVE'}
+              </div>
+            </div>
+            
+            <div className="admin-buttons">
+              <button
+                onClick={handleResetAll}
+                className="btn-danger"
+                disabled={isResetting || isLoading}
+              >
+                <span>⚠️</span>
+                {isResetting ? 'Resetting...' : 'Reset ALL'}
+              </button>
+              
+              <button
+                onClick={handleToggleHunt}
+                className={huntStatus ? "btn-end" : "btn-start"}
+                disabled={isStartingHunt || isLoading || huntStatusLoading}
+              >
+                <span>{huntStatus ? '🛑' : '🚀'}</span>
+                {isStartingHunt ? 
+                  (huntStatus ? 'Starting...' : 'Ending...') : 
+                  (huntStatus ? 'End Hunt' : 'Start Hunt')}
+              </button>
+            </div>
           </div>
 
           {/* Loading State */}

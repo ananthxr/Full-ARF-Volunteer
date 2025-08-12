@@ -210,6 +210,126 @@ export async function updatePhysicalScore(uid: string, physicalScore: number, co
 }
 
 /**
+ * Reset all teams' progress and scores to zero
+ */
+export async function resetAllTeams(): Promise<boolean> {
+  try {
+    await ensureAuth();
+    const rootRef = ref(db);
+    const snapshot = await get(rootRef);
+    
+    if (!snapshot.exists()) {
+      return true; // No teams to reset
+    }
+
+    const allData = snapshot.val();
+    const updates: { [key: string]: any } = {};
+    
+    // Reset each team's scores and session data
+    for (const uid in allData) {
+      if (allData[uid] && typeof allData[uid] === 'object' && allData[uid].teamName) {
+        updates[`${uid}/score`] = 0;
+        updates[`${uid}/physicalScore`] = 0;
+        updates[`${uid}/physicalScoreComment`] = '';
+        
+        // Reset session data
+        updates[`${uid}/session/cluesCompleted`] = 0;
+        updates[`${uid}/session/currentClueNumber`] = 0;
+        updates[`${uid}/session/started`] = false;
+        updates[`${uid}/session/status`] = 'not_started';
+        updates[`${uid}/session/gameStarted`] = false;
+        updates[`${uid}/session/isActive`] = false;
+        updates[`${uid}/session/timeStarted`] = null;
+        updates[`${uid}/session/lastActivity`] = null;
+        updates[`${uid}/session/lastClueTime`] = null;
+      }
+    }
+
+    await update(rootRef, updates);
+    return true;
+  } catch (error) {
+    console.error('Error resetting all teams:', error);
+    throw error;
+  }
+}
+
+/**
+ * Publish volunteer start signal
+ */
+export async function publishVolunteerStart(): Promise<boolean> {
+  try {
+    await ensureAuth();
+    const volunteerRef = ref(db, 'volunteer');
+    await update(volunteerRef, { start: true });
+    return true;
+  } catch (error) {
+    console.error('Error publishing volunteer start:', error);
+    throw error;
+  }
+}
+
+/**
+ * Publish volunteer end signal
+ */
+export async function publishVolunteerEnd(): Promise<boolean> {
+  try {
+    await ensureAuth();
+    const volunteerRef = ref(db, 'volunteer');
+    await update(volunteerRef, { start: false });
+    return true;
+  } catch (error) {
+    console.error('Error publishing volunteer end:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get current hunt status
+ */
+export async function getHuntStatus(): Promise<boolean> {
+  try {
+    await ensureAuth();
+    const volunteerRef = ref(db, 'volunteer/start');
+    const snapshot = await get(volunteerRef);
+    return snapshot.exists() ? snapshot.val() : false;
+  } catch (error) {
+    console.error('Error getting hunt status:', error);
+    return false;
+  }
+}
+
+/**
+ * Set up real-time listener for hunt status
+ */
+export function subscribeToHuntStatus(callback: (status: boolean) => void): () => void {
+  try {
+    const huntStatusRef = ref(db, 'volunteer/start');
+    
+    console.log('Setting up hunt status listener...');
+    
+    const unsubscribe = onValue(huntStatusRef, 
+      (snapshot) => {
+        const status = snapshot.exists() ? snapshot.val() : false;
+        console.log('Hunt status updated:', status);
+        callback(status);
+      },
+      (error) => {
+        console.error('Hunt status listener error:', error);
+        callback(false);
+      }
+    );
+
+    return () => {
+      console.log('Unsubscribing from hunt status listener');
+      off(huntStatusRef, 'value', unsubscribe);
+    };
+  } catch (error) {
+    console.error('Error setting up hunt status listener:', error);
+    return () => {};
+  }
+}
+
+/**
  * Set up real-time listener for team updates
  */
 export function subscribeToTeams(callback: (teams: Team[]) => void): () => void {
