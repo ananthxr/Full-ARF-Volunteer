@@ -228,20 +228,48 @@ export async function resetAllTeams(): Promise<boolean> {
     // Reset each team's scores and session data
     for (const uid in allData) {
       if (allData[uid] && typeof allData[uid] === 'object' && allData[uid].teamName) {
+        // Reset scores (keep registration data)
         updates[`${uid}/score`] = 0;
         updates[`${uid}/physicalScore`] = 0;
         updates[`${uid}/physicalScoreComment`] = '';
         
-        // Reset session data
-        updates[`${uid}/session/cluesCompleted`] = 0;
-        updates[`${uid}/session/currentClueNumber`] = 0;
-        updates[`${uid}/session/started`] = false;
-        updates[`${uid}/session/status`] = 'not_started';
-        updates[`${uid}/session/gameStarted`] = false;
-        updates[`${uid}/session/isActive`] = false;
-        updates[`${uid}/session/timeStarted`] = null;
-        updates[`${uid}/session/lastActivity`] = null;
-        updates[`${uid}/session/lastClueTime`] = null;
+        // DELETE Progress_Follow node entirely (primary progress node)
+        updates[`${uid}/Progress_Follow`] = null;
+        
+        // DELETE legacy session node entirely (may still exist)
+        updates[`${uid}/session`] = null;
+        
+        // Reset score if it exists as a separate node
+        updates[`${uid}/score`] = 0;
+        
+        // Reset legacy session data fields if they exist directly on team
+        updates[`${uid}/cluesCompleted`] = null;
+        updates[`${uid}/currentClueNumber`] = null;
+        updates[`${uid}/physicalGamePending`] = null;
+        updates[`${uid}/physicalGamePlayed`] = null;
+        updates[`${uid}/gameStarted`] = null;
+        updates[`${uid}/started`] = null;
+        updates[`${uid}/status`] = null;
+        updates[`${uid}/isActive`] = null;
+        updates[`${uid}/timeStarted`] = null;
+        updates[`${uid}/lastActivity`] = null;
+        updates[`${uid}/lastClueTime`] = null;
+        updates[`${uid}/totalTreasuresCollected`] = null;
+        updates[`${uid}/nextClueIndex`] = null;
+        updates[`${uid}/physicalGameActive`] = null;
+        updates[`${uid}/physicalGameClueIndex`] = null;
+        updates[`${uid}/lastCompletedClueIndex`] = null;
+        updates[`${uid}/teamAssignedClueIndex`] = null;
+        updates[`${uid}/lastSavedTimestamp`] = null;
+        updates[`${uid}/collectedTreasures`] = null;
+        
+        // Keep team registration data - NO changes to these:
+        // - teamNumber
+        // - teamName  
+        // - player1
+        // - player2
+        // - email
+        // - uid
       }
     }
 
