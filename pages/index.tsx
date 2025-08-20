@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Layout from '@/components/Layout';
-import { subscribeToTeams, updatePhysicalScore, resetAllTeams, publishVolunteerStart, publishVolunteerEnd, getHuntStatus, subscribeToHuntStatus, type Team } from '@/lib/firestore';
+import { subscribeToTeams, updatePhysicalScore, resetAllTeams, publishVolunteerStart, publishVolunteerEnd, getHuntStatus, subscribeToHuntStatus, savePhysicalScoreEntries, getPhysicalScoreEntries, type Team, type PhysicalScoreEntry } from '@/lib/firestore';
 
 export default function VolunteerDashboard() {
   const [teams, setTeams] = useState<Team[]>([]);
@@ -19,6 +19,10 @@ export default function VolunteerDashboard() {
   const [isStartingHunt, setIsStartingHunt] = useState(false);
   const [huntStatus, setHuntStatus] = useState<boolean>(false);
   const [huntStatusLoading, setHuntStatusLoading] = useState(true);
+  
+  // Physical game scoring table state
+  const [physicalScoreTable, setPhysicalScoreTable] = useState<{[teamUid: string]: PhysicalScoreEntry[]}>({});
+  const [showScoreTable, setShowScoreTable] = useState<{[teamUid: string]: boolean}>({});
 
   useEffect(() => {
     let retryCount = 0;
@@ -62,6 +66,25 @@ export default function VolunteerDashboard() {
       }
     };
   }, []);
+
+  // Load existing physical score entries when teams are loaded
+  useEffect(() => {
+    if (teams.length > 0) {
+      const loadScoreEntries = async () => {
+        const newScoreTable: {[teamUid: string]: PhysicalScoreEntry[]} = {};
+        
+        for (const team of teams) {
+          if (team.physicalScoreEntries && team.physicalScoreEntries.length > 0) {
+            newScoreTable[team.uid] = team.physicalScoreEntries;
+          }
+        }
+        
+        setPhysicalScoreTable(newScoreTable);
+      };
+      
+      loadScoreEntries();
+    }
+  }, [teams]);
 
   // Hunt status listener
   useEffect(() => {
@@ -154,6 +177,108 @@ export default function VolunteerDashboard() {
       delete newState[uid];
       return newState;
     });
+  };
+
+  // Physical scoring table functions
+  const addScoreRow = (teamUid: string) => {
+    const newId = Date.now().toString();
+    setPhysicalScoreTable(prev => ({
+      ...prev,
+      [teamUid]: [
+        ...(prev[teamUid] || []),
+        { id: newId, score: 0, volunteer: '', benchmark: '', isAdded: false, timestamp: Date.now() }
+      ]
+    }));
+  };
+
+  const removeScoreRow = async (teamUid: string, rowId: string) => {
+    const updatedEntries = (physicalScoreTable[teamUid] || []).filter(row => row.id !== rowId);
+    
+    // Update local state
+    setPhysicalScoreTable(prev => ({
+      ...prev,
+      [teamUid]: updatedEntries
+    }));
+
+    // Save to database
+    try {
+      await savePhysicalScoreEntries(teamUid, updatedEntries);
+    } catch (error) {
+      console.error('Error saving score entries:', error);
+      alert('Failed to save score entries. Please try again.');
+    }
+  };
+
+  const updateScoreRow = (teamUid: string, rowId: string, field: 'score' | 'volunteer' | 'benchmark', value: string | number) => {
+    const updatedEntries = (physicalScoreTable[teamUid] || []).map(row => 
+      row.id === rowId ? { ...row, [field]: value } : row
+    );
+    
+    // Update local state immediately for responsive UI
+    setPhysicalScoreTable(prev => ({
+      ...prev,
+      [teamUid]: updatedEntries
+    }));
+
+    // Auto-save changes (only for non-added entries since added entries are finalized)
+    const row = updatedEntries.find(r => r.id === rowId);
+    if (row && !row.isAdded) {
+      // Debounce saves to avoid too many database calls
+      clearTimeout((window as any)[`saveTimeout_${teamUid}_${rowId}`]);
+      (window as any)[`saveTimeout_${teamUid}_${rowId}`] = setTimeout(async () => {
+        try {
+          await savePhysicalScoreEntries(teamUid, updatedEntries);
+        } catch (error) {
+          console.error('Error auto-saving score entries:', error);
+        }
+      }, 1000); // Save after 1 second of no changes
+    }
+  };
+
+  const getNetPhysicalScore = (teamUid: string) => {
+    const rows = physicalScoreTable[teamUid] || [];
+    return rows.reduce((sum, row) => sum + (row.isAdded ? (row.score || 0) : 0), 0);
+  };
+
+  const toggleScoreTable = (teamUid: string) => {
+    setShowScoreTable(prev => ({
+      ...prev,
+      [teamUid]: !prev[teamUid]
+    }));
+  };
+
+  const addScoreEntry = async (teamUid: string, rowId: string) => {
+    const row = (physicalScoreTable[teamUid] || []).find(r => r.id === rowId);
+    if (!row) return;
+
+    // Validate required fields
+    if (!row.volunteer.trim()) {
+      alert('Please enter a volunteer name before adding the score.');
+      return;
+    }
+    if (!row.benchmark.trim()) {
+      alert('Please enter a benchmark before adding the score.');
+      return;
+    }
+
+    // Mark the row as added and update timestamp
+    const updatedEntries = (physicalScoreTable[teamUid] || []).map(r => 
+      r.id === rowId ? { ...r, isAdded: true, timestamp: Date.now() } : r
+    );
+
+    // Update local state
+    setPhysicalScoreTable(prev => ({
+      ...prev,
+      [teamUid]: updatedEntries
+    }));
+
+    // Save to database
+    try {
+      await savePhysicalScoreEntries(teamUid, updatedEntries);
+    } catch (error) {
+      console.error('Error saving score entries:', error);
+      alert('Failed to save score entries. Please try again.');
+    }
   };
 
   const getSessionStatusColor = (session: any) => {
@@ -723,6 +848,144 @@ export default function VolunteerDashboard() {
           color: #fdcb6e;
         }
 
+        .score-table-container {
+          background: #f8f9ff;
+          border: 2px solid #667eea;
+          border-radius: 10px;
+          padding: 1rem;
+          margin: 0;
+        }
+
+        .score-table {
+          width: 100%;
+          border-collapse: collapse;
+          background: white;
+          border-radius: 8px;
+          overflow: hidden;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .score-table th,
+        .score-table td {
+          padding: 0.75rem;
+          border-bottom: 1px solid #e1e5f2;
+          text-align: left;
+        }
+
+        .score-table th {
+          background: #667eea;
+          color: white;
+          font-weight: bold;
+          font-size: 0.9rem;
+          text-transform: uppercase;
+        }
+
+        .score-table input {
+          width: 100%;
+          padding: 0.5rem;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          font-size: 0.9rem;
+        }
+
+        .score-table input[type="number"] {
+          text-align: center;
+          width: 80px;
+          font-size: 1rem;
+          font-weight: bold;
+        }
+
+        .table-controls {
+          display: flex;
+          gap: 0.5rem;
+          margin-top: 1rem;
+          flex-wrap: wrap;
+        }
+
+        .btn-table-toggle {
+          background: #667eea;
+          color: white;
+          padding: 0.75rem 1rem;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 0.9rem;
+          font-weight: 600;
+        }
+
+        .btn-table-toggle:hover {
+          background: #5a67d8;
+        }
+
+        .btn-add-row {
+          background: #00b894;
+          color: white;
+          padding: 0.5rem 1rem;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 0.9rem;
+          font-weight: 600;
+        }
+
+        .btn-add-row:hover {
+          background: #00a085;
+        }
+
+        .btn-remove-row {
+          background: #e74c3c;
+          color: white;
+          padding: 0.25rem 0.5rem;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 0.8rem;
+        }
+
+        .btn-remove-row:hover {
+          background: #c0392b;
+        }
+
+        .btn-add-score {
+          background: #00b894;
+          color: white;
+          padding: 0.5rem 1rem;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 0.8rem;
+          font-weight: 600;
+        }
+
+        .btn-add-score:hover {
+          background: #00a085;
+        }
+
+        .btn-add-score:disabled {
+          background: #95a5a6;
+          cursor: not-allowed;
+        }
+
+        .score-row-added {
+          background-color: #d4edda !important;
+          border-left: 4px solid #00b894 !important;
+        }
+
+        .score-row-added input {
+          background-color: #f8f9fa !important;
+          cursor: not-allowed;
+        }
+
+        .net-score-display {
+          background: #00b894;
+          color: white;
+          padding: 0.75rem;
+          border-radius: 8px;
+          text-align: center;
+          font-weight: bold;
+          margin-bottom: 1rem;
+        }
+
         .loading-container {
           text-align: center;
           padding: 3rem;
@@ -1013,144 +1276,233 @@ export default function VolunteerDashboard() {
                         </div>
                       </div>
 
-                      <div className="team-info">
-                        <div className="info-item">
-                          <div className="info-label">Team Number</div>
-                          <div className="info-value">#{team.teamNumber}</div>
-                        </div>
-                        <div className="info-item">
-                          <div className="info-label">Captain</div>
-                          <div className="info-value">{team.player1}</div>
-                        </div>
-                        <div className="info-item">
-                          <div className="info-label">First Mate</div>
-                          <div className="info-value">{team.player2}</div>
-                        </div>
-                        <div className="info-item">
-                          <div className="info-label">Email</div>
-                          <div className="info-value">{team.email}</div>
-                        </div>
-                        <div className="info-item">
-                          <div className="info-label">Phone</div>
-                          <div className="info-value">{team.phoneNumber}</div>
-                        </div>
-                        <div className="info-item">
-                          <div className="info-label">Registered</div>
-                          <div className="info-value">
-                            {new Date(team.createdAt).toLocaleDateString()}
+                      {/* Conditional content: either team details or scoring table */}
+                      {showScoreTable[team.uid] ? (
+                        /* Scoring Table View */
+                        <div>
+                          {/* Table header with back button */}
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            marginBottom: '1rem',
+                            paddingBottom: '1rem',
+                            borderBottom: '2px solid #f0f0f0'
+                          }}>
+                            <h4 style={{ margin: 0, color: '#333', fontSize: '1.1rem' }}>
+                              📊 Physical Game Scoring
+                            </h4>
+                            <button
+                              onClick={() => toggleScoreTable(team.uid)}
+                              className="btn-table-toggle"
+                              style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}
+                            >
+                              ⬅️ Back to Details
+                            </button>
                           </div>
-                        </div>
-                      </div>
 
-                      {/* Session Status */}
-                      <div className="session-status">
-                        <div className="session-status-header">
-                          <h4 style={{ margin: 0, color: '#333', fontSize: '1rem' }}>
-                            🎮 Game Progress
-                          </h4>
-                          <div 
-                            className="session-badge"
-                            style={{ background: getSessionStatusColor(team.session) }}
-                          >
-                            {formatSessionStatus(team.session)}
-                          </div>
-                        </div>
-                        <div className="session-metrics">
-                          <div className="session-metric">
-                            <div className="session-metric-value">
-                              {getSessionData(team.session).currentClue}
+                          {/* Net score display */}
+                          <div className="net-score-display" style={{ marginBottom: '1rem' }}>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
+                              {getNetPhysicalScore(team.uid).toLocaleString()}
                             </div>
-                            <div className="session-metric-label">Current Clue</div>
-                          </div>
-                          <div className="session-metric">
-                            <div className="session-metric-value">
-                              {getSessionData(team.session).cluesSolved}
+                            <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>
+                              Net Score ({(physicalScoreTable[team.uid] || []).filter(row => row.isAdded).length} added / {(physicalScoreTable[team.uid] || []).length} total)
                             </div>
-                            <div className="session-metric-label">Clues Solved</div>
                           </div>
-                          <div className="session-metric">
-                            <div className="session-metric-value">
-                              {getSessionData(team.session).totalClues}
-                            </div>
-                            <div className="session-metric-label">Total Clues</div>
-                          </div>
-                        </div>
-                      </div>
 
-                      <div className="scores-section">
-                        <div className="score-item">
-                          <div className="score-label">AR Game Score</div>
-                          <div className="score-value">{team.score.toLocaleString()}</div>
+                          {/* Add Row button */}
+                          <div style={{ marginBottom: '1rem' }}>
+                            <button
+                              onClick={() => addScoreRow(team.uid)}
+                              className="btn-add-row"
+                            >
+                              ➕ Add Row
+                            </button>
+                          </div>
+
+                          {/* Scoring table */}
+                          <div className="score-table-container">
+                            <table className="score-table">
+                              <thead>
+                                <tr>
+                                  <th>Score</th>
+                                  <th>Volunteer Name</th>
+                                  <th>Benchmark</th>
+                                  <th>Action</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(physicalScoreTable[team.uid] || []).map((row) => (
+                                  <tr key={row.id} className={row.isAdded ? 'score-row-added' : ''}>
+                                    <td>
+                                      <input
+                                        type="number"
+                                        value={row.score}
+                                        onChange={(e) => updateScoreRow(team.uid, row.id, 'score', parseFloat(e.target.value) || 0)}
+                                        placeholder="0"
+                                        disabled={row.isAdded}
+                                      />
+                                    </td>
+                                    <td>
+                                      <input
+                                        type="text"
+                                        value={row.volunteer}
+                                        onChange={(e) => updateScoreRow(team.uid, row.id, 'volunteer', e.target.value)}
+                                        placeholder="Volunteer name"
+                                        disabled={row.isAdded}
+                                      />
+                                    </td>
+                                    <td>
+                                      <input
+                                        type="text"
+                                        value={row.benchmark}
+                                        onChange={(e) => updateScoreRow(team.uid, row.id, 'benchmark', e.target.value)}
+                                        placeholder="Benchmark/notes"
+                                        disabled={row.isAdded}
+                                      />
+                                    </td>
+                                    <td>
+                                      {row.isAdded ? (
+                                        <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                                          <span style={{ color: '#00b894', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                                            ✅ Added
+                                          </span>
+                                          <button
+                                            onClick={() => removeScoreRow(team.uid, row.id)}
+                                            className="btn-remove-row"
+                                          >
+                                            ➖
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                          <button
+                                            onClick={() => addScoreEntry(team.uid, row.id)}
+                                            className="btn-add-score"
+                                          >
+                                            ➕ Add
+                                          </button>
+                                          <button
+                                            onClick={() => removeScoreRow(team.uid, row.id)}
+                                            className="btn-remove-row"
+                                          >
+                                            ➖
+                                          </button>
+                                        </div>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                                {(physicalScoreTable[team.uid] || []).length === 0 && (
+                                  <tr>
+                                    <td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
+                                      No scores added yet. Click "Add Row" to start tracking scores.
+                                    </td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
-                        <div 
-                          className={`score-item ${editingPhysicalScore[team.uid] !== undefined ? 'physical-score-edit' : ''}`}
-                        >
-                          <div className="score-label">Physical Score</div>
-                          {editingPhysicalScore[team.uid] !== undefined ? (
-                            <div>
-                              <div className="edit-controls">
-                                <div className="edit-row">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={editingPhysicalScore[team.uid]}
-                                    onChange={(e) => handlePhysicalScoreChange(team.uid, e.target.value)}
-                                    className="edit-input"
-                                    placeholder="Enter physical score"
-                                  />
-                                  <button
-                                    onClick={() => savePhysicalScore(team.uid, team.teamName)}
-                                    className="btn btn-save"
-                                    disabled={savingScore[team.uid]}
-                                  >
-                                    {savingScore[team.uid] ? '💾' : '✅'}
-                                  </button>
-                                  <button
-                                    onClick={() => cancelEdit(team.uid)}
-                                    className="btn btn-cancel"
-                                    disabled={savingScore[team.uid]}
-                                  >
-                                    ❌
-                                  </button>
-                                </div>
-                                <textarea
-                                  value={editingComment[team.uid] || team.physicalScoreComment || ''}
-                                  onChange={(e) => handleCommentChange(team.uid, e.target.value)}
-                                  className="comment-input"
-                                  placeholder="Add performance notes (e.g., 'Finished in 1:30 mins, 3 attempts', 'Great teamwork!')"
-                                />
+                      ) : (
+                        /* Team Details View */
+                        <div>
+                          <div className="team-info">
+                            <div className="info-item">
+                              <div className="info-label">Team Number</div>
+                              <div className="info-value">#{team.teamNumber}</div>
+                            </div>
+                            <div className="info-item">
+                              <div className="info-label">Captain</div>
+                              <div className="info-value">{team.player1}</div>
+                            </div>
+                            <div className="info-item">
+                              <div className="info-label">First Mate</div>
+                              <div className="info-value">{team.player2}</div>
+                            </div>
+                            <div className="info-item">
+                              <div className="info-label">Email</div>
+                              <div className="info-value">{team.email}</div>
+                            </div>
+                            <div className="info-item">
+                              <div className="info-label">Phone</div>
+                              <div className="info-value">{team.phoneNumber}</div>
+                            </div>
+                            <div className="info-item">
+                              <div className="info-label">Registered</div>
+                              <div className="info-value">
+                                {new Date(team.createdAt).toLocaleDateString()}
                               </div>
                             </div>
-                          ) : (
-                            <div>
-                              <div className="score-value">{(team.physicalScore || 0).toLocaleString()}</div>
-                              {team.physicalScoreComment && (
-                                <div style={{
-                                  fontSize: '0.8rem',
-                                  color: '#666',
-                                  marginTop: '0.5rem',
-                                  fontStyle: 'italic',
-                                  background: '#f8f9ff',
-                                  padding: '0.5rem',
-                                  borderRadius: '6px',
-                                  border: '1px solid #e1e5f2'
-                                }}>
-                                  📝 {team.physicalScoreComment}
-                                </div>
-                              )}
-                              <button
-                                onClick={() => {
-                                  handlePhysicalScoreChange(team.uid, (team.physicalScore || 0).toString());
-                                  handleCommentChange(team.uid, team.physicalScoreComment || '');
-                                }}
-                                className="btn btn-edit"
+                          </div>
+
+                          {/* Session Status */}
+                          <div className="session-status">
+                            <div className="session-status-header">
+                              <h4 style={{ margin: 0, color: '#333', fontSize: '1rem' }}>
+                                🎮 Game Progress
+                              </h4>
+                              <div 
+                                className="session-badge"
+                                style={{ background: getSessionStatusColor(team.session) }}
                               >
-                                ✏️ Edit Physical Score
-                              </button>
+                                {formatSessionStatus(team.session)}
+                              </div>
                             </div>
-                          )}
+                            <div className="session-metrics">
+                              <div className="session-metric">
+                                <div className="session-metric-value">
+                                  {getSessionData(team.session).currentClue}
+                                </div>
+                                <div className="session-metric-label">Current Clue</div>
+                              </div>
+                              <div className="session-metric">
+                                <div className="session-metric-value">
+                                  {getSessionData(team.session).cluesSolved}
+                                </div>
+                                <div className="session-metric-label">Clues Solved</div>
+                              </div>
+                              <div className="session-metric">
+                                <div className="session-metric-value">
+                                  {getSessionData(team.session).totalClues}
+                                </div>
+                                <div className="session-metric-label">Total Clues</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="scores-section">
+                            <div className="score-item">
+                              <div className="score-label">AR Game Score</div>
+                              <div className="score-value">{team.score.toLocaleString()}</div>
+                            </div>
+                            <div className="score-item">
+                              <div className="score-label">Physical Game</div>
+                              
+                              {/* Net score display */}
+                              <div className="net-score-display">
+                                <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
+                                  {getNetPhysicalScore(team.uid).toLocaleString()}
+                                </div>
+                                <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>
+                                  Net Score ({(physicalScoreTable[team.uid] || []).filter(row => row.isAdded).length} added / {(physicalScoreTable[team.uid] || []).length} total)
+                                </div>
+                              </div>
+
+                              {/* Table toggle button */}
+                              <div className="table-controls">
+                                <button
+                                  onClick={() => toggleScoreTable(team.uid)}
+                                  className="btn-table-toggle"
+                                >
+                                  📊 Show Tabular View
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1184,7 +1536,7 @@ export default function VolunteerDashboard() {
                 </div>
                 <div>
                   <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#e17055' }}>
-                    {teams.reduce((sum, team) => sum + (team.physicalScore || 0), 0).toLocaleString()}
+                    {teams.reduce((sum, team) => sum + getNetPhysicalScore(team.uid), 0).toLocaleString()}
                   </div>
                   <div style={{ fontSize: '0.9rem', color: '#666' }}>Physical Points</div>
                 </div>

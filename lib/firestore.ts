@@ -34,6 +34,16 @@ export interface Session {
   [key: string]: any; // Allow for any additional fields
 }
 
+// Define the physical score entry interface
+export interface PhysicalScoreEntry {
+  id: string;
+  score: number;
+  volunteer: string;
+  benchmark: string;
+  isAdded: boolean;
+  timestamp: number;
+}
+
 // Define the Team interface
 export interface Team {
   uid: string;
@@ -46,6 +56,7 @@ export interface Team {
   score: number;
   physicalScore?: number;
   physicalScoreComment?: string; // Comment field for physical score
+  physicalScoreEntries?: PhysicalScoreEntry[]; // Detailed scoring entries
   createdAt: number;
   session?: Session; // Session data for progress tracking
 }
@@ -123,6 +134,7 @@ export async function getAllTeams(): Promise<Team[]> {
         // Ensure physicalScore and comment are included
         teamData.physicalScore = teamData.physicalScore || 0;
         teamData.physicalScoreComment = teamData.physicalScoreComment || '';
+        teamData.physicalScoreEntries = teamData.physicalScoreEntries || [];
         
         // Check if session data exists as a nested object (try multiple field names)
         if (rawTeamData.session && typeof rawTeamData.session === 'object') {
@@ -210,6 +222,57 @@ export async function updatePhysicalScore(uid: string, physicalScore: number, co
 }
 
 /**
+ * Save physical score entries for a team
+ */
+export async function savePhysicalScoreEntries(uid: string, entries: PhysicalScoreEntry[]): Promise<boolean> {
+  try {
+    await ensureAuth();
+    const teamRef = ref(db, uid);
+    const snapshot = await get(teamRef);
+    
+    if (!snapshot.exists()) {
+      throw new Error('Team not found with the provided UID');
+    }
+
+    // Calculate total score from added entries
+    const totalScore = entries.reduce((sum, entry) => sum + (entry.isAdded ? entry.score : 0), 0);
+
+    // Update both the entries and the calculated total
+    const updateData = {
+      physicalScoreEntries: entries,
+      physicalScore: totalScore
+    };
+
+    await update(teamRef, updateData);
+
+    return true;
+  } catch (error) {
+    console.error('Error saving physical score entries:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get physical score entries for a team
+ */
+export async function getPhysicalScoreEntries(uid: string): Promise<PhysicalScoreEntry[]> {
+  try {
+    await ensureAuth();
+    const entriesRef = ref(db, `${uid}/physicalScoreEntries`);
+    const snapshot = await get(entriesRef);
+    
+    if (snapshot.exists()) {
+      return snapshot.val() as PhysicalScoreEntry[];
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Error getting physical score entries:', error);
+    return [];
+  }
+}
+
+/**
  * Reset all teams' progress and scores to zero
  */
 export async function resetAllTeams(): Promise<boolean> {
@@ -232,6 +295,7 @@ export async function resetAllTeams(): Promise<boolean> {
         updates[`${uid}/score`] = 0;
         updates[`${uid}/physicalScore`] = 0;
         updates[`${uid}/physicalScoreComment`] = '';
+        updates[`${uid}/physicalScoreEntries`] = [];
         
         // DELETE Progress_Follow node entirely (primary progress node)
         updates[`${uid}/Progress_Follow`] = null;
@@ -392,6 +456,7 @@ export function subscribeToTeams(callback: (teams: Team[]) => void): () => void 
             // Ensure physicalScore and comment are included
             teamData.physicalScore = teamData.physicalScore || 0;
             teamData.physicalScoreComment = teamData.physicalScoreComment || '';
+            teamData.physicalScoreEntries = teamData.physicalScoreEntries || [];
             
             // Handle session data from the snapshot (try multiple field names)
             if (rawTeamData.session && typeof rawTeamData.session === 'object') {
