@@ -128,7 +128,7 @@ export default function HideTreasures() {
           if (response.ok) {
             const data = await response.json();
             console.log('📦 Loaded existing treasures from server:', data.images?.length);
-            console.log('🏴‍☠️ Existing treasure names:', data.images?.map(t => t.clueName));
+            console.log('🏴‍☠️ Existing treasure names:', data.images?.map((t: TreasureData) => t.clueName));
             setTreasures(data.images || []);
             setTreasureCount(data.images?.length || 0);
             return;

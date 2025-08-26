@@ -12,6 +12,9 @@ interface DeleteTreasureResponse {
   success: boolean;
   error?: string;
   message?: string;
+  imageDeleted?: boolean;
+  configUpdated?: boolean;
+  treasureRemoved?: string;
 }
 
 export default async function handler(
