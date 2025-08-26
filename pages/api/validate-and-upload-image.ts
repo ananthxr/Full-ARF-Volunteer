@@ -77,14 +77,14 @@ export default async function handler(
       
       // Check if ARCore executable exists
       try {
-        await execAsync('arcoreimg.exe --help');
+        await execAsync('arcoreimg --help');
         console.log('ARCore executable found');
       } catch (helpError) {
         const errorMessage = helpError instanceof Error ? helpError.message : String(helpError);
         console.warn('ARCore executable may not be available:', errorMessage);
       }
       
-      const command = `arcoreimg.exe eval-img --input_image_path="${imagePath}"`;
+      const command = `arcoreimg eval-img --input_image_path="${imagePath}"`;
       console.log('ARCore command:', command);
       
       const { stdout, stderr } = await execAsync(command);

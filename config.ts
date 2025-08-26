@@ -25,7 +25,7 @@ export const config = {
     minValidationScore: 75,
     
     // ARCore executable command
-    command: 'arcoreimg.exe'
+    command: 'arcoreimg'
   },
 
   // Application Settings

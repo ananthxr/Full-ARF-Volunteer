@@ -16,7 +16,7 @@ A comprehensive Next.js web application for managing AR treasure hunt events, fe
 **New Feature for Frontman Setup**
 
 - **Image Capture**: WebRTC camera integration for capturing treasure marker images
-- **ARCore Validation**: Automatic image quality validation using `arcoreimg.exe`
+- **ARCore Validation**: Automatic image quality validation using `arcoreimg`
 - **GPS Integration**: Capture precise coordinates for each treasure location  
 - **Server Upload**: Automatic upload to configured server endpoint
 - **Interactive Clue Builder**: Rich interface for creating treasure hunt clues
@@ -49,7 +49,7 @@ export const config = {
   arcore: {
     // Minimum score required for image validation (0-100)
     minValidationScore: 75,
-    command: 'arcoreimg.exe'
+    command: 'arcoreimg'
   },
   
   app: {
@@ -73,7 +73,7 @@ export const config = {
 - **Database**: Firebase Realtime Database
 - **Authentication**: Firebase Anonymous Auth
 - **File Upload**: Formidable for multipart form handling
-- **Image Processing**: ARCore Image Evaluation (`arcoreimg.exe`)
+- **Image Processing**: ARCore Image Evaluation (`arcoreimg`)
 - **Styling**: CSS-in-JS with styled-jsx
 - **Configuration**: Centralized config system
 
@@ -81,7 +81,7 @@ export const config = {
 
 ### Prerequisites
 - Node.js 16+ 
-- `arcoreimg.exe` (Google ARCore Image Tool)
+- `arcoreimg` (Google ARCore Image Tool)
 - Development server (ngrok, localhost, etc.)
 
 ### Installation
@@ -104,7 +104,7 @@ export const config = {
 
 4. **ARCore Setup**:
    - Install Google ARCore SDK Tools
-   - Ensure `arcoreimg.exe` is in system PATH
+   - Ensure `arcoreimg` is in system PATH
    - Adjust validation threshold in `config.ts` if needed
 
 5. **Server Setup**:
@@ -236,7 +236,7 @@ interface TreasureData {
 - **Headers**: Modify `config.server.headers` for your server requirements
 
 ### ARCore Issues:
-- Ensure `arcoreimg.exe` is accessible in PATH
+- Ensure `arcoreimg` is accessible in PATH
 - Check image quality if validation fails
 - Adjust `config.arcore.minValidationScore` if needed
 
