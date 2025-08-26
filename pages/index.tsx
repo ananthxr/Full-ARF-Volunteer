@@ -1206,6 +1206,68 @@ export default function VolunteerDashboard() {
             
             <div className="admin-buttons">
               <button
+                onClick={() => window.location.href = '/hide-treasures'}
+                className="btn-primary"
+                style={{
+                  background: 'linear-gradient(135deg, #8B4513 0%, #D2691E 100%)',
+                  color: 'white',
+                  padding: '0.75rem 1.5rem',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  boxShadow: '0 4px 15px rgba(139, 69, 19, 0.3)',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(139, 69, 19, 0.4)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0px)';
+                  e.currentTarget.style.boxShadow = '0 4px 15px rgba(139, 69, 19, 0.3)';
+                }}
+              >
+                <span>🗺️</span>
+                Hide Treasures
+              </button>
+
+              <button
+                onClick={() => window.location.href = '/treasure-dashboard'}
+                className="btn-primary"
+                style={{
+                  background: 'linear-gradient(135deg, #228B22 0%, #32CD32 100%)',
+                  color: 'white',
+                  padding: '0.75rem 1.5rem',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  boxShadow: '0 4px 15px rgba(34, 139, 34, 0.3)',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(34, 139, 34, 0.4)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0px)';
+                  e.currentTarget.style.boxShadow = '0 4px 15px rgba(34, 139, 34, 0.3)';
+                }}
+              >
+                <span>🏴‍☠️</span>
+                Treasure Dashboard
+              </button>
+
+              <button
                 onClick={handleResetAll}
                 className="btn-danger"
                 disabled={isResetting || isLoading}

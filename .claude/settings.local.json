@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm install:*)",
+      "Read(/Z:\\treasure-images-server/**)",
+      "Read(/Z:\\treasure-images-server/**)",
+      "Read(/Z:\\treasure-images-server/**)",
+      "Read(/Z:\\treasure-images-server/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "images": [
+    {
+      "imageName": "clue_0_park",
+      "fileName": "park.png",
+      "physicalSizeInMeters": 0.15,
+      "clueIndex": 0,
+      "clueName": "park",
+      "spawnOffset": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "spawnRotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "latitude": 24.997743527595354,
+      "longitude": 55.17384800673676,
+      "clueText": "park",
+      "hasPhysicalGame": true,
+      "physicalGameInstruction": "park",
+      "physicalGameSecretCode": "park"
+    },
+    {
+      "imageName": "clue_1_1",
+      "fileName": "1.png",
+      "physicalSizeInMeters": 0.15,
+      "clueIndex": 1,
+      "clueName": "1",
+      "spawnOffset": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "spawnRotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "latitude": 24.997762375430046,
+      "longitude": 55.173924852218775,
+      "clueText": "1",
+      "hasPhysicalGame": true,
+      "physicalGameInstruction": "1",
+      "physicalGameSecretCode": "1"
+    },
+    {
+      "imageName": "clue_2_2",
+      "fileName": "2.png",
+      "physicalSizeInMeters": 0.15,
+      "clueIndex": 2,
+      "clueName": "2",
+      "spawnOffset": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "spawnRotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "latitude": 24.997717011418246,
+      "longitude": 55.17385986147814,
+      "clueText": "2",
+      "hasPhysicalGame": true,
+      "physicalGameInstruction": "2",
+      "physicalGameSecretCode": "2"
+    }
+  ],
+  "lastUpdated": "2025-08-26T07:09:52.728Z",
+  "totalTreasures": 3
+}
