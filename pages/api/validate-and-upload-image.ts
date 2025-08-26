@@ -34,19 +34,12 @@ export default async function handler(
   }
 
   try {
-    // Parse form data
+    // In Vercel, only the /tmp directory is writable
     const form = formidable({
-      uploadDir: './temp',
+      uploadDir: '/tmp',
       keepExtensions: true,
       maxFileSize: 10 * 1024 * 1024, // 10MB limit
     });
-
-    // Ensure temp directory exists
-    try {
-      await fs.access('./temp');
-    } catch {
-      await fs.mkdir('./temp', { recursive: true });
-    }
 
     const [fields, files] = await form.parse(req);
     
@@ -75,16 +68,19 @@ export default async function handler(
       console.log('Running ARCore validation...');
       console.log('Image path:', imagePath);
       
+      // Vercel requires an absolute path to the executable
+      const arcoreImgPath = path.join(process.cwd(), 'arcoreimg');
+      
       // Check if ARCore executable exists
       try {
-        await execAsync('arcoreimg --help');
+        await execAsync(`${arcoreImgPath} --help`);
         console.log('ARCore executable found');
       } catch (helpError) {
         const errorMessage = helpError instanceof Error ? helpError.message : String(helpError);
         console.warn('ARCore executable may not be available:', errorMessage);
       }
       
-      const command = `arcoreimg eval-img --input_image_path="${imagePath}"`;
+      const command = `${arcoreImgPath} eval-img --input_image_path="${imagePath}"`;
       console.log('ARCore command:', command);
       
       const { stdout, stderr } = await execAsync(command);
