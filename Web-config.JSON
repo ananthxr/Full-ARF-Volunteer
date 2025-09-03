@@ -1,59 +1,10 @@
 {
   "storyline": {
-    "selectedStory": "Story1_PirateAdventure_Assets",
-    "storyTitle": "Pirate Adventure",
-    "storyDescription": "Embark on a swashbuckling treasure hunt across the seven seas!"
+    "selectedStory": "Story2_AncientEgypt_Assets",
+    "storyTitle": "Ancient Egypt Explorer",
+    "storyDescription": "Uncover the mysteries of the pharaohs and ancient pyramids!"
   },
-  "images": [
-    {
-      "imageName": "clue_0_champ",
-      "fileName": "Champ.png",
-      "physicalSizeInMeters": 0.15,
-      "clueIndex": 0,
-      "clueName": "Champ",
-      "storyAssetIndex": 0,
-      "spawnOffset": {
-        "x": 0,
-        "y": 0,
-        "z": 0
-      },
-      "spawnRotation": {
-        "x": 0,
-        "y": 0,
-        "z": 0
-      },
-      "latitude": 24.9875809,
-      "longitude": 55.2017978,
-      "clueText": "Find the treasure at the champion's resting place",
-      "hasPhysicalGame": true,
-      "physicalGameInstruction": "Solve the riddle to get the secret code",
-      "physicalGameSecretCode": "PIRATE123"
-    },
-    {
-      "imageName": "clue_1_box",
-      "fileName": "Box.png",
-      "physicalSizeInMeters": 0.15,
-      "clueIndex": 1,
-      "clueName": "Box",
-      "storyAssetIndex": 1,
-      "spawnOffset": {
-        "x": 0,
-        "y": 0,
-        "z": 0
-      },
-      "spawnRotation": {
-        "x": 0,
-        "y": 0,
-        "z": 0
-      },
-      "latitude": 24.9875724,
-      "longitude": 55.2017832,
-      "clueText": "The wooden box holds ancient secrets",
-      "hasPhysicalGame": true,
-      "physicalGameInstruction": "Open the box to reveal the next clue",
-      "physicalGameSecretCode": "TREASURE456"
-    }
-  ],
-  "lastUpdated": "2025-09-03T09:09:25.839Z",
-  "totalTreasures": 2
+  "images": [],
+  "lastUpdated": "2025-09-03T12:33:55.331Z",
+  "totalTreasures": 0
 }

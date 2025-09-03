@@ -34,10 +34,10 @@ interface GPSCoordinates {
   longitude: number;
 }
 
-type PageStep = 'setup' | 'capture' | 'crop' | 'processing' | 'clue-builder' | 'complete';
+type PageStep = 'storyline-selection' | 'setup' | 'capture' | 'crop' | 'processing' | 'clue-builder' | 'complete';
 
 export default function HideTreasures() {
-  const [currentStep, setCurrentStep] = useState<PageStep>('setup');
+  const [currentStep, setCurrentStep] = useState<PageStep>('storyline-selection');
   const [treasureCount, setTreasureCount] = useState(0);
   const [maxTreasures, setMaxTreasures] = useState(config.app.defaultMaxTreasures);
   const [showInstructions, setShowInstructions] = useState(false);
@@ -121,6 +121,47 @@ export default function HideTreasures() {
     }
   };
 
+  // Save storyline selection and update config immediately
+  const saveStorylineAndProceed = async () => {
+    try {
+      console.log('💾 Saving storyline selection:', selectedStoryline);
+      console.log('📦 Current treasures being sent:', treasures);
+      
+      // Update web config with the selected storyline (and any existing treasures)
+      const requestBody = { 
+        treasures: treasures, // Keep existing treasures if any
+        storyline: selectedStoryline
+      };
+      
+      console.log('📤 Request body being sent:', JSON.stringify(requestBody, null, 2));
+      
+      const response = await fetch('/api/update-web-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+
+      console.log('📥 Response status:', response.status);
+      console.log('📥 Response ok:', response.ok);
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ API response:', result);
+        console.log('✅ Storyline saved successfully to config');
+        console.log('🎯 Setting current step to setup...');
+        setCurrentStep('setup'); // Proceed to setup step
+        console.log('🎯 Current step should now be setup');
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Failed to save storyline:', response.status, errorText);
+        alert('Failed to save storyline selection. Please try again.');
+      }
+    } catch (error) {
+      console.error('❌ Error saving storyline:', error);
+      alert('Failed to save storyline selection. Please check your connection and try again.');
+    }
+  };
+
   // Debug effect to track capturedImage changes
   useEffect(() => {
     const exists = !!capturedImage;
@@ -155,8 +196,8 @@ export default function HideTreasures() {
     }
   }, [imageName]);
 
-  // Load existing treasures on component mount
-  const loadExistingTreasures = async () => {
+  // Load existing treasures and determine starting step
+  const loadExistingTreasuresAndDetermineStep = async () => {
     try {
       // ONLY load from server - no local fallback
       if (config.server.baseUrl) {
@@ -170,8 +211,32 @@ export default function HideTreasures() {
             const data = await response.json();
             console.log('📦 Loaded existing treasures from server:', data.images?.length);
             console.log('🏴‍☠️ Existing treasure names:', data.images?.map((t: TreasureData) => t.clueName));
-            setTreasures(data.images || []);
-            setTreasureCount(data.images?.length || 0);
+            console.log('📖 Existing storyline data:', data.storyline);
+            
+            const existingTreasures = data.images || [];
+            setTreasures(existingTreasures);
+            setTreasureCount(existingTreasures.length);
+            
+            // Check if storyline exists and treasures exist
+            if (data.storyline && data.storyline.selectedStory) {
+              // Storyline already exists, load it
+              setSelectedStoryline(data.storyline);
+              console.log('✅ Existing storyline loaded:', data.storyline.storyTitle);
+              
+              // If treasures exist, go to setup, otherwise go to capture
+              if (existingTreasures.length > 0) {
+                setCurrentStep('setup');
+                console.log('🎯 Step: setup (storyline + treasures exist)');
+              } else {
+                setCurrentStep('setup');
+                console.log('🎯 Step: setup (storyline exists, no treasures yet)');
+              }
+            } else {
+              // No storyline exists, force storyline selection first
+              console.log('📖 No storyline found, requiring storyline selection');
+              setCurrentStep('storyline-selection');
+              console.log('🎯 Step: storyline-selection (no storyline found)');
+            }
             return;
           } else {
             console.warn('Server returned error when loading treasures:', response.status);
@@ -183,19 +248,32 @@ export default function HideTreasures() {
         console.warn('No server configured, starting with empty treasure list');
       }
       
-      // If server fails, start fresh
-      console.log('Starting with empty treasure list');
+      // If server fails, start fresh with storyline selection
+      console.log('Starting with empty treasure list and storyline selection');
       setTreasures([]);
       setTreasureCount(0);
+      setCurrentStep('storyline-selection');
+      console.log('🎯 Step: storyline-selection (server unavailable)');
     } catch (error) {
       console.error('Error loading existing treasures:', error);
+      setCurrentStep('storyline-selection');
     }
   };
 
+  // Legacy function for backwards compatibility
+  const loadExistingTreasures = async () => {
+    await loadExistingTreasuresAndDetermineStep();
+  };
+
+  // Initialization effect - only runs once on component mount
   useEffect(() => {
+    console.log('🚀 Component mounting - initializing...');
     requestGPSPermission();
-    loadExistingTreasures();
-    
+    loadExistingTreasuresAndDetermineStep();
+  }, []); // Empty dependency array - runs only once
+
+  // Event listeners effect - updates when dependencies change
+  useEffect(() => {
     // Add mobile-specific event listeners
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && cameraStream && currentStep === 'capture') {
@@ -1327,6 +1405,138 @@ export default function HideTreasures() {
           
           {/* Step Content */}
           <div className="step-content">
+            {/* Storyline Selection Step */}
+            {currentStep === 'storyline-selection' && (
+              <div style={{ textAlign: 'center' }}>
+                <h2 style={{ color: '#8B4513', fontSize: '2.5rem', marginBottom: '1rem' }}>
+                  📖 Choose Your Adventure Story
+                </h2>
+                <p style={{ fontSize: '1.2rem', color: '#666', marginBottom: '3rem' }}>
+                  Select the storyline theme for your treasure hunt adventure. This determines the 3D assets and atmosphere of your AR experience.
+                </p>
+
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+                  gap: '2rem',
+                  marginBottom: '3rem',
+                  maxWidth: '1000px',
+                  margin: '0 auto 3rem auto'
+                }}>
+                  {availableStorylines.map((storyline) => (
+                    <div 
+                      key={storyline.selectedStory}
+                      onClick={() => updateStorylineSelection(storyline.selectedStory)}
+                      style={{
+                        background: selectedStoryline.selectedStory === storyline.selectedStory 
+                          ? 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)' 
+                          : 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
+                        border: selectedStoryline.selectedStory === storyline.selectedStory 
+                          ? '3px solid #8B4513' 
+                          : '2px solid #ddd',
+                        borderRadius: '20px',
+                        padding: '2rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease',
+                        boxShadow: selectedStoryline.selectedStory === storyline.selectedStory
+                          ? '0 15px 35px rgba(139,69,19,0.3)'
+                          : '0 5px 15px rgba(0,0,0,0.1)',
+                        transform: selectedStoryline.selectedStory === storyline.selectedStory
+                          ? 'translateY(-5px)'
+                          : 'translateY(0)',
+                      }}
+                    >
+                      <div style={{
+                        fontSize: '3rem',
+                        marginBottom: '1rem',
+                        filter: selectedStoryline.selectedStory === storyline.selectedStory ? 'none' : 'grayscale(50%)'
+                      }}>
+                        {storyline.selectedStory === 'Story1_PirateAdventure_Assets' && '🏴‍☠️'}
+                        {storyline.selectedStory === 'Story2_AncientEgypt_Assets' && '🏛️'}
+                        {storyline.selectedStory === 'Story3_SpaceExplorer_Assets' && '🚀'}
+                      </div>
+                      <h3 style={{ 
+                        color: selectedStoryline.selectedStory === storyline.selectedStory ? '#8B4513' : '#666', 
+                        fontSize: '1.5rem', 
+                        marginBottom: '1rem',
+                        fontWeight: 'bold'
+                      }}>
+                        {storyline.storyTitle}
+                      </h3>
+                      <p style={{ 
+                        color: selectedStoryline.selectedStory === storyline.selectedStory ? '#8B4513' : '#666', 
+                        fontSize: '1rem',
+                        lineHeight: '1.5',
+                        margin: '0'
+                      }}>
+                        {storyline.storyDescription}
+                      </p>
+                      {selectedStoryline.selectedStory === storyline.selectedStory && (
+                        <div style={{
+                          marginTop: '1rem',
+                          padding: '0.5rem 1rem',
+                          background: 'rgba(139,69,19,0.2)',
+                          borderRadius: '25px',
+                          fontSize: '0.9rem',
+                          fontWeight: 'bold',
+                          color: '#8B4513'
+                        }}>
+                          ✅ SELECTED
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{
+                  background: 'rgba(139,69,19,0.1)',
+                  padding: '2rem',
+                  borderRadius: '15px',
+                  marginBottom: '2rem',
+                  textAlign: 'left'
+                }}>
+                  <h4 style={{ color: '#8B4513', fontSize: '1.2rem', marginBottom: '1rem' }}>
+                    ⚠️ Important: Sequential Setup Process
+                  </h4>
+                  <div style={{ color: '#666', lineHeight: '1.6' }}>
+                    <p style={{ margin: '0 0 0.5rem 0' }}>
+                      <strong>Step 1:</strong> Select your storyline theme (this step)
+                    </p>
+                    <p style={{ margin: '0 0 0.5rem 0' }}>
+                      <strong>Step 2:</strong> Configure treasure hunt settings
+                    </p>
+                    <p style={{ margin: '0 0 0.5rem 0' }}>
+                      <strong>Step 3:</strong> Capture and hide treasure markers
+                    </p>
+                    <p style={{ margin: '0', fontStyle: 'italic', color: '#8B4513' }}>
+                      Once you save your storyline selection, the mobile app will know which 3D assets to download for your adventure!
+                    </p>
+                  </div>
+                </div>
+
+                <button 
+                  className="btn btn-success"
+                  onClick={saveStorylineAndProceed}
+                  style={{ 
+                    fontSize: '1.3rem', 
+                    padding: '1.5rem 3rem',
+                    background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)'
+                  }}
+                >
+                  💾 Save Storyline & Continue
+                </button>
+
+                <p style={{ 
+                  marginTop: '1rem', 
+                  fontSize: '0.9rem', 
+                  color: '#666',
+                  fontStyle: 'italic'
+                }}>
+                  This will update your treasure hunt configuration and allow you to proceed to the next step.
+                </p>
+              </div>
+            )}
+
             {/* Setup Step */}
             {currentStep === 'setup' && (
               <div style={{ textAlign: 'center' }}>
