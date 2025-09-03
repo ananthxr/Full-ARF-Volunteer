@@ -110,6 +110,7 @@ export default async function handler(
     };
 
     console.log('Updating Web-config.JSON with treasures:', treasures.length);
+    console.log('Final config object:', JSON.stringify(webConfig, null, 2));
 
     // Step 1: Save locally first
     const localConfigPath = path.join(process.cwd(), 'Web-config.JSON');
