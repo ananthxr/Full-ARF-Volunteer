@@ -5,7 +5,7 @@ export const config = {
   // Server Configuration
   server: {
     // Change this URL to your ngrok or development server
-    baseUrl: 'https://13d6f2ae3427.ngrok-free.app',
+    baseUrl: 'https://7e6e3b101130.ngrok-free.app',
     
     // API Endpoints (relative to baseUrl)
     endpoints: {
@@ -25,7 +25,7 @@ export const config = {
     minValidationScore: 75,
     
     // ARCore executable command
-    command: 'arcoreimg'
+    command: 'arcoreimg.exe'
   },
 
   // Application Settings
