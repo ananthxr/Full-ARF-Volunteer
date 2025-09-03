@@ -103,7 +103,11 @@ export default async function handler(
 
     // Create the web config object
     const webConfig: WebConfig = {
-      storyline: defaultStoryline,
+      storyline: {
+        selectedStory: 'Story1_PirateAdventure_Assets',
+        storyTitle: 'Pirate Adventure',
+        storyDescription: 'Embark on a swashbuckling treasure hunt across the seven seas!'
+      },
       images: treasuresWithStoryIndex,
       lastUpdated: new Date().toISOString(),
       totalTreasures: treasures.length
