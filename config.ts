@@ -5,12 +5,12 @@ export const config = {
   // Server Configuration
   server: {
     // Change this URL to your ngrok or development server
-    baseUrl: 'https://4c9c12cb5823.ngrok-free.app',
+    baseUrl: 'https://e47ac2741be4.ngrok-free.app',
     
     // API Endpoints (relative to baseUrl)
     endpoints: {
       uploadImage: '/upload-treasure-image',
-      uploadWebConfig: '/upload-web-config'
+      uploadWebConfig: '/upload-web-config'  // Reverted back to original
     },
     
     // Request headers

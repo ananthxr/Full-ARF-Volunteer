@@ -148,17 +148,22 @@ export default function HideTreasures() {
         const result = await response.json();
         console.log('✅ API response:', result);
         console.log('✅ Storyline saved successfully to config');
+        console.log('📍 Now requesting GPS permission...');
+        
+        // Request GPS permission after storyline is saved
+        await requestGPSPermission();
+        
         console.log('🎯 Setting current step to setup...');
         setCurrentStep('setup'); // Proceed to setup step
         console.log('🎯 Current step should now be setup');
       } else {
         const errorText = await response.text();
         console.error('❌ Failed to save storyline:', response.status, errorText);
-        alert('Failed to save storyline selection. Please try again.');
+        // Show error in UI instead of alert - will handle this in UI
       }
     } catch (error) {
       console.error('❌ Error saving storyline:', error);
-      alert('Failed to save storyline selection. Please check your connection and try again.');
+      // Show error in UI instead of alert - will handle this in UI
     }
   };
 
@@ -223,13 +228,15 @@ export default function HideTreasures() {
               setSelectedStoryline(data.storyline);
               console.log('✅ Existing storyline loaded:', data.storyline.storyTitle);
               
-              // If treasures exist, go to setup, otherwise go to capture
+              // Only auto-redirect to setup if we have treasures (indicating established session)
+              // If no treasures, keep on storyline selection to let user proceed manually
               if (existingTreasures.length > 0) {
                 setCurrentStep('setup');
-                console.log('🎯 Step: setup (storyline + treasures exist)');
+                console.log('🎯 Step: setup (storyline + treasures exist - auto-redirect)');
               } else {
-                setCurrentStep('setup');
-                console.log('🎯 Step: setup (storyline exists, no treasures yet)');
+                // Keep on storyline-selection step - let user click "Save & Continue"
+                setCurrentStep('storyline-selection');
+                console.log('🎯 Step: storyline-selection (storyline exists but no treasures - manual proceed)');
               }
             } else {
               // No storyline exists, force storyline selection first
@@ -268,9 +275,12 @@ export default function HideTreasures() {
   // Initialization effect - only runs once on component mount
   useEffect(() => {
     console.log('🚀 Component mounting - initializing...');
-    requestGPSPermission();
+    // Don't request GPS permission immediately - wait until setup step
     loadExistingTreasuresAndDetermineStep();
   }, []); // Empty dependency array - runs only once
+
+  // GPS permission will now be requested manually when user clicks "Save & Continue"
+  // Removed automatic GPS request to give user more control
 
   // Event listeners effect - updates when dependencies change
   useEffect(() => {
@@ -1560,24 +1570,6 @@ export default function HideTreasures() {
                 </div>
 
                 <div style={{ marginBottom: '2rem' }}>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ color: '#8B4513', fontWeight: 'bold', fontSize: '1.1rem', display: 'block', marginBottom: '0.5rem' }}>
-                      🎭 Select Adventure Storyline:
-                    </label>
-                    <select 
-                      value={selectedStoryline.selectedStory}
-                      onChange={(e) => updateStorylineSelection(e.target.value)}
-                      className="form-input"
-                      style={{ width: '100%', padding: '1rem' }}
-                    >
-                      {availableStorylines.map((storyline) => (
-                        <option key={storyline.selectedStory} value={storyline.selectedStory}>
-                          {storyline.storyTitle}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
                   <div style={{
                     background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
                     padding: '1.5rem',
@@ -1586,10 +1578,13 @@ export default function HideTreasures() {
                     textAlign: 'center'
                   }}>
                     <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem' }}>
-                      🌟 {selectedStoryline.storyTitle}
+                      🌟 Selected Story: {selectedStoryline.storyTitle}
                     </h4>
                     <p style={{ margin: '0', fontSize: '1rem', fontStyle: 'italic' }}>
                       {selectedStoryline.storyDescription}
+                    </p>
+                    <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem', opacity: 0.8 }}>
+                      ✅ Config updated successfully
                     </p>
                   </div>
                 </div>
