@@ -12,6 +12,7 @@ interface TreasureData {
   physicalSizeInMeters: number;
   clueIndex: number;
   clueName: string;
+  storyAssetIndex: number;
   spawnOffset: { x: number; y: number; z: number };
   spawnRotation: { x: number; y: number; z: number };
   clueText: string;
@@ -20,6 +21,12 @@ interface TreasureData {
   hasPhysicalGame: boolean;
   physicalGameInstruction: string;
   physicalGameSecretCode: string;
+}
+
+interface Storyline {
+  selectedStory: string;
+  storyTitle: string;
+  storyDescription: string;
 }
 
 interface GPSCoordinates {
@@ -38,6 +45,13 @@ export default function HideTreasures() {
   const [cameraPermission, setCameraPermission] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<GPSCoordinates | null>(null);
   const [treasures, setTreasures] = useState<TreasureData[]>([]);
+  
+  // Storyline state
+  const [selectedStoryline, setSelectedStoryline] = useState<Storyline>({
+    selectedStory: 'Story1_PirateAdventure_Assets',
+    storyTitle: 'Pirate Adventure',
+    storyDescription: 'Embark on a swashbuckling treasure hunt across the seven seas!'
+  });
   
   // Camera related states
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -79,6 +93,33 @@ export default function HideTreasures() {
   const [hasPhysicalGame, setHasPhysicalGame] = useState(false);
   const [physicalInstruction, setPhysicalInstruction] = useState('');
   const [secretCode, setSecretCode] = useState('');
+
+  // Available storylines
+  const availableStorylines = [
+    {
+      selectedStory: 'Story1_PirateAdventure_Assets',
+      storyTitle: 'Pirate Adventure',
+      storyDescription: 'Embark on a swashbuckling treasure hunt across the seven seas!'
+    },
+    {
+      selectedStory: 'Story2_AncientEgypt_Assets',
+      storyTitle: 'Ancient Egypt Explorer',
+      storyDescription: 'Uncover the mysteries of the pharaohs and ancient pyramids!'
+    },
+    {
+      selectedStory: 'Story3_SpaceExplorer_Assets',
+      storyTitle: 'Space Explorer',
+      storyDescription: 'Journey through the cosmos and discover alien civilizations!'
+    }
+  ];
+
+  // Helper function to update storyline when selection changes
+  const updateStorylineSelection = (selectedStoryValue: string) => {
+    const storyline = availableStorylines.find(s => s.selectedStory === selectedStoryValue);
+    if (storyline) {
+      setSelectedStoryline(storyline);
+    }
+  };
 
   // Debug effect to track capturedImage changes
   useEffect(() => {
@@ -795,18 +836,22 @@ export default function HideTreasures() {
       clueText: clueText.trim(),
       hasPhysicalGame,
       physicalGameInstruction: hasPhysicalGame ? physicalInstruction : '',
-      physicalGameSecretCode: hasPhysicalGame ? secretCode : ''
+      physicalGameSecretCode: hasPhysicalGame ? secretCode : '',
+      storyAssetIndex: treasureCount // This will be overridden by the API with proper sequential indexing
     };
     
     const newTreasures = [...treasures, completeTreasure];
     setTreasures(newTreasures);
     
-    // Update web config file
+    // Update web config file with storyline and treasures
     try {
       await fetch('/api/update-web-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ treasures: newTreasures })
+        body: JSON.stringify({ 
+          treasures: newTreasures,
+          storyline: selectedStoryline
+        })
       });
     } catch (error) {
       console.error('Failed to update web config:', error);
@@ -1302,6 +1347,41 @@ export default function HideTreasures() {
                       max="20"
                     />
                   </label>
+                </div>
+
+                <div style={{ marginBottom: '2rem' }}>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ color: '#8B4513', fontWeight: 'bold', fontSize: '1.1rem', display: 'block', marginBottom: '0.5rem' }}>
+                      🎭 Select Adventure Storyline:
+                    </label>
+                    <select 
+                      value={selectedStoryline.selectedStory}
+                      onChange={(e) => updateStorylineSelection(e.target.value)}
+                      className="form-input"
+                      style={{ width: '100%', padding: '1rem' }}
+                    >
+                      {availableStorylines.map((storyline) => (
+                        <option key={storyline.selectedStory} value={storyline.selectedStory}>
+                          {storyline.storyTitle}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div style={{
+                    background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                    padding: '1.5rem',
+                    borderRadius: '15px',
+                    color: '#8B4513',
+                    textAlign: 'center'
+                  }}>
+                    <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem' }}>
+                      🌟 {selectedStoryline.storyTitle}
+                    </h4>
+                    <p style={{ margin: '0', fontSize: '1rem', fontStyle: 'italic' }}>
+                      {selectedStoryline.storyDescription}
+                    </p>
+                  </div>
                 </div>
 
                 <div style={{ marginBottom: '2rem', padding: '1rem', background: '#f8f9fa', borderRadius: '10px' }}>

@@ -11,6 +11,7 @@ interface TreasureData {
   physicalSizeInMeters: number;
   clueIndex: number;
   clueName: string;
+  storyAssetIndex: number;
   spawnOffset: { x: number; y: number; z: number };
   spawnRotation: { x: number; y: number; z: number };
   clueText: string;
@@ -21,7 +22,14 @@ interface TreasureData {
   physicalGameSecretCode: string;
 }
 
+interface Storyline {
+  selectedStory: string;
+  storyTitle: string;
+  storyDescription: string;
+}
+
 interface WebConfig {
+  storyline: Storyline;
   images: TreasureData[];
   lastUpdated: string;
   totalTreasures: number;
@@ -29,6 +37,7 @@ interface WebConfig {
 
 interface UpdateConfigRequest {
   treasures: TreasureData[];
+  storyline?: Storyline;
 }
 
 interface UpdateConfigResponse {
@@ -47,15 +56,55 @@ export default async function handler(
   }
 
   try {
-    const { treasures }: UpdateConfigRequest = req.body;
+    const { treasures, storyline }: UpdateConfigRequest = req.body;
 
     if (!Array.isArray(treasures)) {
       return res.status(400).json({ success: false, error: 'Invalid treasures data' });
     }
 
+    // Helper function to get storyline title and description
+    const getStorylineInfo = (selectedStory: string) => {
+      const storylines = {
+        'Story1_PirateAdventure_Assets': {
+          title: 'Pirate Adventure',
+          description: 'Embark on a swashbuckling treasure hunt across the seven seas!'
+        },
+        'Story2_AncientEgypt_Assets': {
+          title: 'Ancient Egypt Explorer',
+          description: 'Uncover the mysteries of the pharaohs and ancient pyramids!'
+        },
+        'Story3_SpaceExplorer_Assets': {
+          title: 'Space Explorer',
+          description: 'Journey through the cosmos and discover alien civilizations!'
+        }
+      };
+      return storylines[selectedStory as keyof typeof storylines] || storylines['Story1_PirateAdventure_Assets'];
+    };
+
+    // Default storyline if not provided
+    const defaultStoryline = storyline || {
+      selectedStory: 'Story1_PirateAdventure_Assets',
+      storyTitle: 'Pirate Adventure',
+      storyDescription: 'Embark on a swashbuckling treasure hunt across the seven seas!'
+    };
+
+    // Ensure storyline has proper title and description
+    if (!defaultStoryline.storyTitle || !defaultStoryline.storyDescription) {
+      const info = getStorylineInfo(defaultStoryline.selectedStory);
+      defaultStoryline.storyTitle = info.title;
+      defaultStoryline.storyDescription = info.description;
+    }
+
+    // Auto-generate storyAssetIndex for each treasure (sequential: 0, 1, 2, ...)
+    const treasuresWithStoryIndex = treasures.map((treasure, index) => ({
+      ...treasure,
+      storyAssetIndex: index
+    }));
+
     // Create the web config object
     const webConfig: WebConfig = {
-      images: treasures,
+      storyline: defaultStoryline,
+      images: treasuresWithStoryIndex,
       lastUpdated: new Date().toISOString(),
       totalTreasures: treasures.length
     };
