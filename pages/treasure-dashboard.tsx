@@ -12,6 +12,7 @@ interface TreasureData {
   physicalSizeInMeters: number;
   clueIndex: number;
   clueName: string;
+  storyAssetIndex: number;
   spawnOffset: { x: number; y: number; z: number };
   spawnRotation: { x: number; y: number; z: number };
   clueText: string;
@@ -22,7 +23,14 @@ interface TreasureData {
   physicalGameSecretCode: string;
 }
 
+interface Storyline {
+  selectedStory: string;
+  storyTitle: string;
+  storyDescription: string;
+}
+
 interface TreasureConfig {
+  storyline?: Storyline;
   images: TreasureData[];
   lastUpdated: string;
   totalTreasures: number;
@@ -30,6 +38,7 @@ interface TreasureConfig {
 
 export default function TreasureDashboard() {
   const [treasures, setTreasures] = useState<TreasureData[]>([]);
+  const [storyline, setStoryline] = useState<Storyline | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string>('');
@@ -62,7 +71,9 @@ export default function TreasureDashboard() {
           console.log('🌐 Server response data:', data);
           console.log('📊 Treasures from server:', data.images?.length);
           console.log('🏴‍☠️ Treasure names:', data.images?.map(t => t.clueName));
+          console.log('🎭 Storyline from server:', data.storyline);
           setTreasures(data.images || []);
+          setStoryline(data.storyline || null);
           setLastUpdated(data.lastUpdated || 'Unknown');
           return;
         } else {
@@ -488,6 +499,34 @@ export default function TreasureDashboard() {
               </div>
             ) : (
               <>
+                {/* Storyline Info */}
+                {storyline && (
+                  <div style={{
+                    background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                    padding: '1.5rem',
+                    borderRadius: '15px',
+                    marginBottom: '2rem',
+                    textAlign: 'center',
+                    color: '#8B4513'
+                  }}>
+                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>
+                      🎭 Current Adventure: {storyline.storyTitle}
+                    </h3>
+                    <p style={{ margin: '0', fontSize: '1rem', fontStyle: 'italic' }}>
+                      {storyline.storyDescription}
+                    </p>
+                    <div style={{ 
+                      marginTop: '0.5rem', 
+                      fontSize: '0.9rem', 
+                      background: 'rgba(139,69,19,0.1)',
+                      padding: '0.5rem',
+                      borderRadius: '8px'
+                    }}>
+                      <strong>Unity Bundle:</strong> {storyline.selectedStory}
+                    </div>
+                  </div>
+                )}
+
                 {/* Stats Bar */}
                 <div className="stats-bar">
                   <div>
@@ -499,6 +538,11 @@ export default function TreasureDashboard() {
                   <div>
                     <strong>📅 Last Updated:</strong> {formatDate(lastUpdated)}
                   </div>
+                  {storyline && (
+                    <div>
+                      <strong>🎭 Storyline:</strong> {storyline.storyTitle}
+                    </div>
+                  )}
                 </div>
 
                 {/* Treasures Grid */}
@@ -537,6 +581,9 @@ export default function TreasureDashboard() {
                         
                         <div className="detail-label">📁 File:</div>
                         <div className="detail-value">{treasure.fileName}</div>
+                        
+                        <div className="detail-label">🎭 Story Asset:</div>
+                        <div className="detail-value">#{treasure.storyAssetIndex}</div>
                       </div>
 
                       {treasure.hasPhysicalGame && (
