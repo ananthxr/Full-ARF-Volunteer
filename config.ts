@@ -5,7 +5,7 @@ export const config = {
   // Server Configuration
   server: {
     // Change this URL to your ngrok or development server
-    baseUrl: 'https://ec9fb2fc3994.ngrok-free.app',
+    baseUrl: 'https://arth-backend.onrender.com',
     
     // API Endpoints (relative to baseUrl)
     endpoints: {

@@ -135,25 +135,41 @@ export default function HideTreasures() {
       
       // Update web config with the selected storyline (and any existing treasures)
       const requestBody = { 
-        treasures: treasures, // Keep existing treasures if any
-        storyline: selectedStoryline
+        images: treasures, // Use 'images' key as expected by server
+        storyline: selectedStoryline,
+        lastUpdated: new Date().toISOString(),
+        totalTreasures: treasures.length
       };
       
       console.log('📤 Request body being sent:', JSON.stringify(requestBody, null, 2));
       
-      const response = await fetch('/api/update-web-config', {
+      // First, update local web config
+      const localResponse = await fetch('/api/update-web-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ treasures: treasures, storyline: selectedStoryline })
+      });
+
+      console.log('📥 Local config response status:', localResponse.status);
+      
+      // Then, update server config
+      console.log('🔥 Firing server config update:', `${config.server.baseUrl}/upload-web-config`);
+      const serverResponse = await fetch(`${config.server.baseUrl}/upload-web-config`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          ...config.server.headers
+        },
         body: JSON.stringify(requestBody)
       });
 
-      console.log('📥 Response status:', response.status);
-      console.log('📥 Response ok:', response.ok);
+      console.log('📥 Server config response status:', serverResponse.status);
+      console.log('📥 Server config response ok:', serverResponse.ok);
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log('✅ API response:', result);
-        console.log('✅ Storyline saved successfully to config');
+      if (localResponse.ok && serverResponse.ok) {
+        const result = await serverResponse.json();
+        console.log('✅ Server API response:', result);
+        console.log('✅ Storyline saved successfully to both local and server config');
         console.log('📍 Now requesting GPS permission...');
         
         // Request GPS permission after storyline is saved
@@ -163,8 +179,14 @@ export default function HideTreasures() {
         setCurrentStep('setup'); // Proceed to setup step
         console.log('🎯 Current step should now be setup');
       } else {
-        const errorText = await response.text();
-        console.error('❌ Failed to save storyline:', response.status, errorText);
+        if (!localResponse.ok) {
+          const errorText = await localResponse.text();
+          console.error('❌ Failed to save local config:', localResponse.status, errorText);
+        }
+        if (!serverResponse.ok) {
+          const errorText = await serverResponse.text();
+          console.error('❌ Failed to save server config:', serverResponse.status, errorText);
+        }
         // Show error in UI instead of alert - will handle this in UI
       }
     } catch (error) {

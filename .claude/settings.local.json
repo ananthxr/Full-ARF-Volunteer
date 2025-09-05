@@ -11,7 +11,8 @@
       "Read(/Z:\\treasure-images-server/**)",
       "Read(/Z:\\treasure-images-server/**)",
       "Bash(npm run dev:*)",
-      "Read(//z/treasure-images-server/**)"
+      "Read(//z/treasure-images-server/**)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []
