@@ -40,6 +40,7 @@ export default function HideTreasures() {
   const [currentStep, setCurrentStep] = useState<PageStep>('storyline-selection');
   const [treasureCount, setTreasureCount] = useState(0);
   const [maxTreasures, setMaxTreasures] = useState(config.app.defaultMaxTreasures);
+  const [availableAssets, setAvailableAssets] = useState(3); // Will be fetched from server config
   const [showInstructions, setShowInstructions] = useState(false);
   const [gpsPermission, setGpsPermission] = useState(false);
   const [cameraPermission, setCameraPermission] = useState(false);
@@ -126,6 +127,11 @@ export default function HideTreasures() {
     try {
       console.log('💾 Saving storyline selection:', selectedStoryline);
       console.log('📦 Current treasures being sent:', treasures);
+      
+      // Set asset count to 3 - each storyline has exactly 3 assets in the bundle
+      console.log('🎯 Setting available assets to 3 (each storyline has 3 preset assets)');
+      setAvailableAssets(3);
+      setMaxTreasures(3);
       
       // Update web config with the selected storyline (and any existing treasures)
       const requestBody = { 
@@ -1555,18 +1561,23 @@ export default function HideTreasures() {
                 </h2>
                 
                 <div style={{ marginBottom: '2rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                    <span style={{ color: '#8B4513', fontWeight: 'bold' }}>Maximum Treasures:</span>
-                    <input 
-                      type="number" 
-                      value={maxTreasures}
-                      onChange={(e) => setMaxTreasures(parseInt(e.target.value) || 5)}
-                      className="form-input"
-                      style={{ width: '100px' }}
-                      min="1"
-                      max="20"
-                    />
-                  </label>
+                  <div style={{
+                    background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%)',
+                    padding: '1.5rem',
+                    borderRadius: '15px',
+                    textAlign: 'center',
+                    border: '2px solid #4caf50'
+                  }}>
+                    <h4 style={{ color: '#2e7d32', margin: '0 0 0.5rem 0', fontSize: '1.2rem' }}>
+                      🎯 Available Assets for {selectedStoryline.storyTitle}
+                    </h4>
+                    <div style={{ fontSize: '2rem', color: '#2e7d32', fontWeight: 'bold' }}>
+                      {availableAssets} images ready to be captured
+                    </div>
+                    <p style={{ margin: '0.5rem 0 0 0', color: '#2e7d32', fontSize: '0.9rem' }}>
+                      Your storyline bundle contains {availableAssets} preset assets that can be spawned in AR
+                    </p>
+                  </div>
                 </div>
 
                 <div style={{ marginBottom: '2rem' }}>

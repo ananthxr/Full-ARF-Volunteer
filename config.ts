@@ -5,7 +5,7 @@ export const config = {
   // Server Configuration
   server: {
     // Change this URL to your ngrok or development server
-    baseUrl: 'https://e47ac2741be4.ngrok-free.app',
+    baseUrl: 'https://ec9fb2fc3994.ngrok-free.app',
     
     // API Endpoints (relative to baseUrl)
     endpoints: {

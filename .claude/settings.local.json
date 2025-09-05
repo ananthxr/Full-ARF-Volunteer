@@ -10,7 +10,8 @@
       "Read(/Z:\\treasure-images-server/**)",
       "Read(/Z:\\treasure-images-server/**)",
       "Read(/Z:\\treasure-images-server/**)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Read(//z/treasure-images-server/**)"
     ],
     "deny": [],
     "ask": []
