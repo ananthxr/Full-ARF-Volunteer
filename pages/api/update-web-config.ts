@@ -29,7 +29,7 @@ interface Storyline {
 }
 
 interface UnityStoryline {
-  selectedStory: string; // Unity format: story1_pirateadventure, story2_ancientegypt, etc.
+  selectedStory: string; // Unity format: Story1_PirateAdventure_Assets, Story2_AncientEgypt_Assets, etc.
   storyTitle: string;
   storyDescription: string;
 }
@@ -92,13 +92,13 @@ export default async function handler(
     // Convert storyline to Unity format
     const convertToUnityFormat = (storyline: Storyline) => {
       const unityMapping: { [key: string]: string } = {
-        'Story1_PirateAdventure_Assets': 'story1_pirateadventure',
-        'Story2_AncientEgypt_Assets': 'story2_ancientegypt', 
-        'Story3_SpaceExplorer_Assets': 'story3_spaceexplorer'
+        'Story1_PirateAdventure_Assets': 'Story1_PirateAdventure_Assets',
+        'Story2_AncientEgypt_Assets': 'Story2_AncientEgypt_Assets', 
+        'Story3_SpaceExplorer_Assets': 'Story3_SpaceExplorer_Assets'
       };
 
       return {
-        selectedStory: unityMapping[storyline.selectedStory] || 'story1_pirateadventure',
+        selectedStory: unityMapping[storyline.selectedStory] || 'Story1_PirateAdventure_Assets',
         storyTitle: storyline.storyTitle,
         storyDescription: storyline.storyDescription
       };
