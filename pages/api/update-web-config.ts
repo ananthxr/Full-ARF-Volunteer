@@ -185,28 +185,8 @@ export default async function handler(
       });
     }
 
-    // Step 2: Save local backup only if server update succeeded
-    if (serverUpdateSuccess) {
-      const localConfigPath = path.join(process.cwd(), 'Web-config.JSON');
-      try {
-        await fs.writeFile(localConfigPath, JSON.stringify(webConfig, null, 2), 'utf8');
-        console.log('✅ Local backup saved successfully');
-      } catch (localError) {
-        console.error('⚠️ Local backup failed (not critical):', localError);
-      }
-    }
-
-    // Step 3: Also save to public directory for local access (optional)
-    try {
-      const publicConfigPath = path.join(process.cwd(), 'public', 'Web-config.JSON');
-      await fs.mkdir(path.dirname(publicConfigPath), { recursive: true });
-      await fs.writeFile(publicConfigPath, JSON.stringify(webConfig, null, 2), 'utf8');
-      console.log('✅ Public directory backup updated successfully');
-    } catch (publicError) {
-      console.error('⚠️ Public directory backup failed (not critical):', publicError);
-    }
-
-    // Return success - server update is the primary requirement
+    // Return success - server update is the only requirement
+    // Note: Local file writes removed to avoid EROFS errors in serverless environments
     return res.status(200).json({
       success: true,
       message: 'Config successfully uploaded to treasure server',
