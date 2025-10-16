@@ -127,11 +127,12 @@ export default function HideTreasures() {
     try {
       console.log('💾 Saving storyline selection:', selectedStoryline);
       console.log('📦 Current treasures being sent:', treasures);
-      
-      // Set asset count to 3 - each storyline has exactly 3 assets in the bundle
-      console.log('🎯 Setting available assets to 3 (each storyline has 3 preset assets)');
-      setAvailableAssets(3);
-      setMaxTreasures(3);
+
+      // Set asset count based on storyline - Pirate has 4, others have 3
+      const assetCount = selectedStoryline.selectedStory === 'Story1_PirateAdventure_Assets' ? 4 : 3;
+      console.log(`🎯 Setting available assets to ${assetCount} for ${selectedStoryline.storyTitle}`);
+      setAvailableAssets(assetCount);
+      setMaxTreasures(assetCount);
       
       // Update web config with the selected storyline (and any existing treasures)
       const requestBody = { 
@@ -1594,10 +1595,10 @@ export default function HideTreasures() {
                       🎯 Available Assets for {selectedStoryline.storyTitle}
                     </h4>
                     <div style={{ fontSize: '2rem', color: '#2e7d32', fontWeight: 'bold' }}>
-                      {availableAssets} images ready to be captured
+                      {availableAssets} {availableAssets === 1 ? 'image' : 'images'} ready to be captured
                     </div>
                     <p style={{ margin: '0.5rem 0 0 0', color: '#2e7d32', fontSize: '0.9rem' }}>
-                      Your storyline bundle contains {availableAssets} preset assets that can be spawned in AR
+                      Your storyline bundle contains {availableAssets} preset {availableAssets === 1 ? 'asset' : 'assets'} that can be spawned in AR
                     </p>
                   </div>
                 </div>
@@ -2051,7 +2052,7 @@ export default function HideTreasures() {
                       />
                       
                       {/* Crop overlay */}
-                      <div 
+                      <div
                         style={{
                           position: 'absolute',
                           left: `${(cropArea.x / imageDimensions.width) * 100}%`,
@@ -2063,66 +2064,72 @@ export default function HideTreasures() {
                           backgroundColor: 'rgba(255, 215, 0, 0.2)',
                           cursor: 'move',
                           minWidth: '50px',
-                          minHeight: '50px'
+                          minHeight: '50px',
+                          touchAction: 'none'
                         }}
                         onMouseDown={(e) => {
                           e.preventDefault();
+                          e.stopPropagation();
                           const rect = e.currentTarget.parentElement!.getBoundingClientRect();
                           const startX = e.clientX;
                           const startY = e.clientY;
                           const startCropX = cropArea.x;
                           const startCropY = cropArea.y;
-                          
+
                           const handleMouseMove = (moveE: MouseEvent) => {
+                            moveE.preventDefault();
+                            moveE.stopPropagation();
                             const deltaX = moveE.clientX - startX;
                             const deltaY = moveE.clientY - startY;
                             const scaleX = imageDimensions.width / rect.width;
                             const scaleY = imageDimensions.height / rect.height;
-                            
+
                             setCropArea(prev => ({
                               ...prev,
                               x: Math.max(0, Math.min(imageDimensions.width - prev.width, startCropX + deltaX * scaleX)),
                               y: Math.max(0, Math.min(imageDimensions.height - prev.height, startCropY + deltaY * scaleY))
                             }));
                           };
-                          
+
                           const handleMouseUp = () => {
                             document.removeEventListener('mousemove', handleMouseMove);
                             document.removeEventListener('mouseup', handleMouseUp);
                           };
-                          
+
                           document.addEventListener('mousemove', handleMouseMove);
                           document.addEventListener('mouseup', handleMouseUp);
                         }}
                         onTouchStart={(e) => {
                           e.preventDefault();
+                          e.stopPropagation();
                           const rect = e.currentTarget.parentElement!.getBoundingClientRect();
                           const touch = e.touches[0];
                           const startX = touch.clientX;
                           const startY = touch.clientY;
                           const startCropX = cropArea.x;
                           const startCropY = cropArea.y;
-                          
+
                           const handleTouchMove = (moveE: TouchEvent) => {
                             moveE.preventDefault();
+                            moveE.stopPropagation();
                             const moveTouch = moveE.touches[0];
                             const deltaX = moveTouch.clientX - startX;
                             const deltaY = moveTouch.clientY - startY;
                             const scaleX = imageDimensions.width / rect.width;
                             const scaleY = imageDimensions.height / rect.height;
-                            
+
                             setCropArea(prev => ({
                               ...prev,
                               x: Math.max(0, Math.min(imageDimensions.width - prev.width, startCropX + deltaX * scaleX)),
                               y: Math.max(0, Math.min(imageDimensions.height - prev.height, startCropY + deltaY * scaleY))
                             }));
                           };
-                          
+
                           const handleTouchEnd = () => {
                             document.removeEventListener('touchmove', handleTouchMove);
                             document.removeEventListener('touchend', handleTouchEnd);
                           };
-                          
+
                           document.addEventListener('touchmove', handleTouchMove, { passive: false });
                           document.addEventListener('touchend', handleTouchEnd);
                         }}
@@ -2135,7 +2142,8 @@ export default function HideTreasures() {
                           height: '15px',
                           backgroundColor: '#FFD700',
                           cursor: 'se-resize',
-                          borderRadius: '3px'
+                          borderRadius: '3px',
+                          touchAction: 'none'
                         }}
                         onMouseDown={(e) => {
                           e.preventDefault();
@@ -2145,25 +2153,27 @@ export default function HideTreasures() {
                           const startY = e.clientY;
                           const startWidth = cropArea.width;
                           const startHeight = cropArea.height;
-                          
+
                           const handleMouseMove = (moveE: MouseEvent) => {
+                            moveE.preventDefault();
+                            moveE.stopPropagation();
                             const deltaX = moveE.clientX - startX;
                             const deltaY = moveE.clientY - startY;
                             const scaleX = imageDimensions.width / rect.width;
                             const scaleY = imageDimensions.height / rect.height;
-                            
+
                             setCropArea(prev => ({
                               ...prev,
                               width: Math.max(50, Math.min(imageDimensions.width - prev.x, startWidth + deltaX * scaleX)),
                               height: Math.max(50, Math.min(imageDimensions.height - prev.y, startHeight + deltaY * scaleY))
                             }));
                           };
-                          
+
                           const handleMouseUp = () => {
                             document.removeEventListener('mousemove', handleMouseMove);
                             document.removeEventListener('mouseup', handleMouseUp);
                           };
-                          
+
                           document.addEventListener('mousemove', handleMouseMove);
                           document.addEventListener('mouseup', handleMouseUp);
                         }}
@@ -2176,27 +2186,28 @@ export default function HideTreasures() {
                           const startY = touch.clientY;
                           const startWidth = cropArea.width;
                           const startHeight = cropArea.height;
-                          
+
                           const handleTouchMove = (moveE: TouchEvent) => {
                             moveE.preventDefault();
+                            moveE.stopPropagation();
                             const moveTouch = moveE.touches[0];
                             const deltaX = moveTouch.clientX - startX;
                             const deltaY = moveTouch.clientY - startY;
                             const scaleX = imageDimensions.width / rect.width;
                             const scaleY = imageDimensions.height / rect.height;
-                            
+
                             setCropArea(prev => ({
                               ...prev,
                               width: Math.max(50, Math.min(imageDimensions.width - prev.x, startWidth + deltaX * scaleX)),
                               height: Math.max(50, Math.min(imageDimensions.height - prev.y, startHeight + deltaY * scaleY))
                             }));
                           };
-                          
+
                           const handleTouchEnd = () => {
                             document.removeEventListener('touchmove', handleTouchMove);
                             document.removeEventListener('touchend', handleTouchEnd);
                           };
-                          
+
                           document.addEventListener('touchmove', handleTouchMove, { passive: false });
                           document.addEventListener('touchend', handleTouchEnd);
                         }}
